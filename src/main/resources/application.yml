@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: taskmanager
+  datasource:
+    url: jdbc:postgresql://localhost:5432/taskmanager_db
+    username: 
+    password: 
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:ChangeThisSecretKeyToSomethingLongAndRandomForProduction1234567890}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.primetrade.taskmanager: INFO
+    org.springframework.security: WARN

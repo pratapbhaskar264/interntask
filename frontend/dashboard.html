@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Task Manager</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container wide">
+  <div class="topbar">
+    <div>
+      <h1 style="margin-bottom:0;">Your Tasks</h1>
+      <div class="user-info">
+        Signed in as <strong id="usernameLabel"></strong>
+        <span class="role-badge" id="roleLabel"></span>
+      </div>
+    </div>
+    <button class="btn-secondary" id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="card">
+    <form class="task-form" id="taskForm">
+      <input type="text" id="title" placeholder="Task title" required maxlength="150">
+      <input type="text" id="description" placeholder="Description (optional)" maxlength="2000">
+      <select id="status">
+        <option value="PENDING">Pending</option>
+        <option value="IN_PROGRESS">In progress</option>
+        <option value="COMPLETED">Completed</option>
+      </select>
+      <button type="submit" class="btn-primary" style="margin-top:0;">Add task</button>
+    </form>
+
+    <div id="alert" class="alert"></div>
+
+    <ul class="task-list" id="taskList"></ul>
+    <div class="empty-state" id="emptyState" style="display:none;">No tasks yet. Create your first one above.</div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+requireAuth();
+
+const user = getCurrentUser();
+document.getElementById("usernameLabel").textContent = user.username;
+document.getElementById("roleLabel").textContent = user.role;
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  clearSession();
+  window.location.href = "login.html";
+});
+
+const alertBox = document.getElementById("alert");
+function showAlert(message, type) {
+  alertBox.textContent = message;
+  alertBox.className = `alert show ${type}`;
+  setTimeout(() => (alertBox.className = "alert"), 3000);
+}
+
+const taskList = document.getElementById("taskList");
+const emptyState = document.getElementById("emptyState");
+
+function statusLabel(status) {
+  return { PENDING: "Pending", IN_PROGRESS: "In progress", COMPLETED: "Completed" }[status] || status;
+}
+
+function renderTasks(tasks) {
+  taskList.innerHTML = "";
+  emptyState.style.display = tasks.length === 0 ? "block" : "none";
+
+  tasks.forEach((task) => {
+    const li = document.createElement("li");
+    li.className = "task-item";
+    li.innerHTML = `
+      <div>
+        <div class="task-title">${escapeHtml(task.title)}</div>
+        ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ""}
+        <div class="task-meta">
+          <span class="status-pill status-${task.status}">${statusLabel(task.status)}</span>
+          &nbsp;•&nbsp; owner: ${escapeHtml(task.ownerUsername)}
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="btn-secondary" data-action="cycle" data-id="${task.id}" data-status="${task.status}">Advance status</button>
+        <button class="btn-danger" data-action="delete" data-id="${task.id}">Delete</button>
+      </div>
+    `;
+    taskList.appendChild(li);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function loadTasks() {
+  try {
+    const page = await apiFetch("/tasks?size=100&sort=createdAt,desc");
+    renderTasks(page.content);
+  } catch (err) {
+    showAlert(err.message, "error");
+  }
+}
+
+document.getElementById("taskForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const status = document.getElementById("status").value;
+
+  try {
+    await apiFetch("/tasks", {
+      method: "POST",
+      body: JSON.stringify({ title, description, status }),
+    });
+    document.getElementById("taskForm").reset();
+    showAlert("Task created", "success");
+    loadTasks();
+  } catch (err) {
+    showAlert(err.message, "error");
+  }
+});
+
+const nextStatus = { PENDING: "IN_PROGRESS", IN_PROGRESS: "COMPLETED", COMPLETED: "PENDING" };
+
+taskList.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+
+  try {
+    if (action === "delete") {
+      await apiFetch(`/tasks/${id}`, { method: "DELETE" });
+      showAlert("Task deleted", "success");
+    } else if (action === "cycle") {
+      const current = btn.dataset.status;
+      const task = await apiFetch(`/tasks/${id}`);
+      await apiFetch(`/tasks/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: task.title,
+          description: task.description,
+          status: nextStatus[current],
+        }),
+      });
+      showAlert("Task updated", "success");
+    }
+    loadTasks();
+  } catch (err) {
+    showAlert(err.message, "error");
+  }
+});
+
+loadTasks();
+</script>
+</body>
+</html>

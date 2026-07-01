@@ -1,0 +1,7 @@
+package com.primetrade.taskmanager.model;
+
+public enum TaskStatus {
+    PENDING,
+    IN_PROGRESS,
+    COMPLETED
+}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - Task Manager</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>Create an account</h1>
+    <p class="subtitle">Register to start managing your tasks.</p>
+
+    <form id="registerForm">
+      <label for="username">Username</label>
+      <input type="text" id="username" required minlength="3" maxlength="50" placeholder="jane_doe">
+
+      <label for="email">Email</label>
+      <input type="email" id="email" required placeholder="jane@example.com">
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required minlength="8" placeholder="At least 8 characters">
+
+      <button type="submit" class="btn-primary">Register</button>
+      <div id="alert" class="alert"></div>
+    </form>
+
+    <div class="footer-link">
+      Already have an account? <a class="link" href="login.html">Log in</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const form = document.getElementById("registerForm");
+const alertBox = document.getElementById("alert");
+
+function showAlert(message, type) {
+  alertBox.textContent = message;
+  alertBox.className = `alert show ${type}`;
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  alertBox.className = "alert";
+
+  const username = document.getElementById("username").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    const authResponse = await apiFetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, email, password }),
+    });
+    saveSession(authResponse);
+    showAlert("Account created! Redirecting to your dashboard...", "success");
+    setTimeout(() => (window.location.href = "dashboard.html"), 800);
+  } catch (err) {
+    showAlert(err.message, "error");
+  }
+});
+</script>
+</body>
+</html>
